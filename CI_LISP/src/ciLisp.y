@@ -10,7 +10,7 @@
     struct symbol_table_node *symTableNode;
 };
 
-%token <sval> FUNC SYMBOL
+%token <sval> FUNC SYMBOL TYPE
 %token <dval> INT DOUBLE
 %token LPAREN RPAREN EOL QUIT LET
 
@@ -65,8 +65,11 @@ let_list:
 		$$ = addToSymbolTable($1,$2);
 	}
 
-let_elem: LPAREN SYMBOL s_expr RPAREN{
-	$$ =  createSymbolTableNode($2,$3);
+let_elem: LPAREN TYPE SYMBOL s_expr RPAREN{
+		$$ = createSymbolTableNode($3,$4,$2);
+	}
+	|LPAREN SYMBOL s_expr RPAREN{
+		$$ =  createSymbolTableNode($2,$3, "");
 }
 
 number:

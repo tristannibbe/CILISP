@@ -11,6 +11,7 @@ int [+-]?{digit}+
 double [+-]?{digit}+\.{digit}*
 func "neg"|"abs"|"exp"|"sqrt"|"add"|"sub"|"mult"|"div"|"remainder"|"log"|"pow"|"max"|"min"
 symbol [a-zA-Z]+
+type "int"|"double"
 
 %%
 
@@ -25,7 +26,11 @@ symbol [a-zA-Z]+
     fprintf(stderr, "lex: DOUBLE dval = %lf\n", yylval.dval);
     return DOUBLE;
 }
-
+{type} {
+    yylval.sval = (char *) malloc(strlen(yytext)*sizeof(char)+1);
+    strcpy(yylval.sval, yytext);
+    return TYPE;
+}
 "let" {
     fprintf(stderr, "lex: LET\n");
     return LET;

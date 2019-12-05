@@ -58,7 +58,8 @@ typedef enum {
 // Types of numeric values
 typedef enum {
     INT_TYPE = 0,
-    DOUBLE_TYPE
+    DOUBLE_TYPE,
+    UNDEFINED_TYPE
 } NUM_TYPE;
 
 // Node to store a number.
@@ -86,6 +87,7 @@ typedef struct symbol_ast_node{
 
 typedef  struct symbol_table_node{
     char* ident;
+    NUM_TYPE val_type;
     struct ast_node *val;
     struct symbol_table_node *next;
 } SYMBOL_TABLE_NODE;
@@ -106,7 +108,7 @@ typedef struct ast_node {
 AST_NODE* createSymbolNode(char* ident);
 AST_NODE *createNumberNode(double value, NUM_TYPE type);
 AST_NODE *createFunctionNode(char *funcName, AST_NODE *op1, AST_NODE *op2);
-SYMBOL_TABLE_NODE* createSymbolTableNode( char* ident,AST_NODE *symbol);
+SYMBOL_TABLE_NODE* createSymbolTableNode( char* ident,AST_NODE *symbol, char* type);
 SYMBOL_TABLE_NODE* addToSymbolTable(SYMBOL_TABLE_NODE *table, SYMBOL_TABLE_NODE *toAdd);
 AST_NODE* setSymbolTable(SYMBOL_TABLE_NODE *table, AST_NODE *node);
 

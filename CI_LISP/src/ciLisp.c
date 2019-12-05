@@ -12,8 +12,11 @@ char *numNames[] = {
         "Double"
 };
 
-SYMBOL_TABLE_NODE *head;
 
+char *types[] = {
+    "int",
+    "double"
+};
 // Array of string values for operations.
 // Must be in sync with funcs in the OPER_TYPE enum in order for resolveFunc to work.
 char *funcNames[] = {
@@ -52,6 +55,17 @@ OPER_TYPE resolveFunc(char *funcName)
         i++;
     }
     return CUSTOM_OPER;
+}
+
+NUM_TYPE resolveType(char *type){
+    int i = 0;
+    while (types[i][0] != '\0')
+    {
+        if (strcmp(types[i], type) == 0)
+            return i;
+        i++;
+    }
+    return UNDEFINED_TYPE;
 }
 
 // Called when an INT or DOUBLE token is encountered (see ciLisp.l and ciLisp.y).
@@ -207,12 +221,22 @@ void setNumType(RET_VAL num){
         num.type = DOUBLE_TYPE;
 }
 
+RET_VAL roundToINT(RET_VAL node){
+    node.value = round(node.value);
+    node.type = INT_TYPE;
+    return  node;
+}
+
 RET_VAL evalSymbolNode(AST_NODE *node, char* ident){
 
 
     if(node->symbolTable != NULL) {
         SYMBOL_TABLE_NODE *current = node->symbolTable;
         if (strcmp(node->symbolTable->ident, ident) == 0) {
+            if(eval(current->val).type == DOUBLE_TYPE && current->val_type == INT_TYPE){
+                printf("WARNING: precision loss in the assignment for variable %s\n",ident);
+                return roundToINT( eval(current->val) );
+            }
             return eval(current->val);
         }
 
@@ -242,55 +266,94 @@ RET_VAL evalFuncNode(AST_NODE *node)
         return (RET_VAL){INT_TYPE, NAN};
 
     RET_VAL result = {INT_TYPE, NAN};
+    RET_VAL temp1 = {INT_TYPE, NAN};
+    RET_VAL temp2 = {INT_TYPE, NAN};
+
 
     switch(node->data.function.oper){
         case NEG_OPER:
             result.value = -eval(node->data.function.op1).value;
+            setNumType(result);
             break;
         case ABS_OPER:
             result.value = fabs(eval(node->data.function.op1).value);
+            setNumType(result);
             break;
         case SQRT_OPER:
             result.value = sqrt(eval(node->data.function.op1).value);
+            result.type = DOUBLE_TYPE;
             break;
         case EXP_OPER:
             result.value = exp(eval(node->data.function.op1).value);
+            result.type = DOUBLE_TYPE;
             break;
         case ADD_OPER:
-            result.value = eval(node->data.function.op1).value + eval(node->data.function.op2).value;
+            temp1 = eval(node->data.function.op1);
+            temp2 = eval(node->data.function.op2);
+
+            if(temp1.type == DOUBLE_TYPE || temp2.type == DOUBLE_TYPE){
+                result.type = DOUBLE_TYPE;
+            }
+            result.value = temp1.value + temp2.value;
             break;
         case SUB_OPER:
-            result.value = eval(node->data.function.op1).value - eval(node->data.function.op2).value;
+            temp1 = eval(node->data.function.op1);
+            temp2 = eval(node->data.function.op2);
+
+            if(temp1.type == DOUBLE_TYPE || temp2.type == DOUBLE_TYPE){
+                result.type = DOUBLE_TYPE;
+            }
+            result.value = temp1.value - temp2.value;
             break;
         case MAX_OPER:
             result.value = fmax(eval(node->data.function.op1).value,eval(node->data.function.op2).value);
+            setNumType(result);
             break;
         case MIN_OPER:
             result.value = fmin(eval(node->data.function.op1).value,eval(node->data.function.op2).value);
+            setNumType(result);
             break;
         case MULT_OPER:
-            result.value = eval(node->data.function.op1).value * eval(node->data.function.op2).value;
+            temp1 = eval(node->data.function.op1);
+            temp2 = eval(node->data.function.op2);
+
+            if(temp1.type == DOUBLE_TYPE || temp2.type == DOUBLE_TYPE){
+                result.type = DOUBLE_TYPE;
+            }
+            result.value = temp1.value * temp2.value;
             break;
         case REMAINDER_OPER:
             result.value = fmod(eval(node->data.function.op1).value,eval(node->data.function.op2).value);
+            result.type = DOUBLE_TYPE;
             break;
         case DIV_OPER:
-            result.value = eval(node->data.function.op1).value / eval(node->data.function.op2).value;
+            temp1 = eval(node->data.function.op1);
+            temp2 = eval(node->data.function.op2);
+
+            if(temp1.type == DOUBLE_TYPE || temp2.type == DOUBLE_TYPE){
+                result.type = DOUBLE_TYPE;
+            }
+            result.value = temp1.value / temp2.value;
             break;
         case LOG_OPER:
             result.value = log(eval(node->data.function.op1).value);
+            result.type = DOUBLE_TYPE;
             break;
         case POW_OPER:
             result.value = pow(eval(node->data.function.op1).value,eval(node->data.function.op2).value);
+            setNumType(result);
             break;
         case EXP2_OPER:
             result.value = exp2(eval(node->data.function.op1).value);
+            setNumType(result);
             break;
         case CBRT_OPER:
             result.value = cbrt(eval(node->data.function.op1).value);
+            result.type = DOUBLE_TYPE;
             break;
         case HYPOT_OPER:
             result.value = hypot(eval(node->data.function.op1).value,eval(node->data.function.op2).value);
+            setNumType(result);
             break;
         case READ_OPER:
             break;
@@ -311,7 +374,6 @@ RET_VAL evalFuncNode(AST_NODE *node)
     // TODO populate result with the result of running the function on its operands.
     // SEE: AST_NODE, AST_NODE_TYPE, FUNC_AST_NODE
 
-    setNumType(result);
     return result;
 }
 
@@ -357,7 +419,7 @@ AST_NODE* createSymbolNode(char* ident){
     return node;
 }
 
-SYMBOL_TABLE_NODE* createSymbolTableNode(char *ident,AST_NODE *value){
+SYMBOL_TABLE_NODE* createSymbolTableNode(char *ident,AST_NODE *value, char* type){
     SYMBOL_TABLE_NODE *node;
     size_t  nodeSize;
     nodeSize = sizeof(SYMBOL_TABLE_NODE);
@@ -366,6 +428,7 @@ SYMBOL_TABLE_NODE* createSymbolTableNode(char *ident,AST_NODE *value){
 
     node->ident = ident;
     node->val = value;
+    node->val_type = resolveType(type);
     return node;
 }
 
