@@ -360,6 +360,7 @@ RET_VAL evalFuncNode(AST_NODE *node)
         case RAND_OPER:
             break;
         case PRINT_OPER:
+            result = eval(node->data.function.op1);
             break;
         case EQUAL_OPER:
             break;
