@@ -77,8 +77,7 @@ typedef NUM_AST_NODE RET_VAL;
 typedef struct {
     OPER_TYPE oper;
     char* ident; // only needed for custom functions
-    struct ast_node *op1;
-    struct ast_node *op2;
+    struct ast_node *opList;
 } FUNC_AST_NODE;
 
 typedef struct symbol_ast_node{
@@ -98,6 +97,7 @@ typedef struct ast_node {
     AST_NODE_TYPE type;
     SYMBOL_TABLE_NODE *symbolTable;
     struct ast_node *parent;
+    struct ast_node *next;
     union {
         NUM_AST_NODE number;
         FUNC_AST_NODE function;
@@ -107,10 +107,11 @@ typedef struct ast_node {
 
 AST_NODE* createSymbolNode(char* ident);
 AST_NODE *createNumberNode(double value, NUM_TYPE type);
-AST_NODE *createFunctionNode(char *funcName, AST_NODE *op1, AST_NODE *op2);
+AST_NODE *createFunctionNode(char *funcName, AST_NODE *opList);
 SYMBOL_TABLE_NODE* createSymbolTableNode( char* ident,AST_NODE *symbol, char* type);
 SYMBOL_TABLE_NODE* addToSymbolTable(SYMBOL_TABLE_NODE *table, SYMBOL_TABLE_NODE *toAdd);
 AST_NODE* setSymbolTable(SYMBOL_TABLE_NODE *table, AST_NODE *node);
+AST_NODE* setNextValue(AST_NODE *curr, AST_NODE *next);
 
 void freeNode(AST_NODE *node);
 
@@ -118,6 +119,7 @@ RET_VAL eval(AST_NODE *node);
 RET_VAL evalNumNode(AST_NODE *node);
 RET_VAL evalFuncNode(AST_NODE *node);
 RET_VAL evalSymbolNode(AST_NODE *node,char* ident);
+void printFunc(RET_VAL val);
 
 void printRetVal(RET_VAL val);
 

@@ -102,7 +102,7 @@ AST_NODE *createNumberNode(double value, NUM_TYPE type)
 //      - An OPER_TYPE (the enum identifying the specific function being called)
 //      - 2 AST_NODEs, the operands
 // SEE: AST_NODE, FUNC_AST_NODE, AST_NODE_TYPE.
-AST_NODE *createFunctionNode(char *funcName, AST_NODE *op1, AST_NODE *op2)
+AST_NODE *createFunctionNode(char *funcName, AST_NODE *opList)
 {
     AST_NODE *node;
     size_t nodeSize;
@@ -113,12 +113,9 @@ AST_NODE *createFunctionNode(char *funcName, AST_NODE *op1, AST_NODE *op2)
         yyerror("Memory allocation failed!");
 
     node->type = FUNC_NODE_TYPE;
-    node->data.function.op1 = op1;
-    node->data.function.op2 = op2;
-    if(op1 != NULL){
-        op1->parent = node;
-    }if(op2 != NULL){
-        op2->parent = node;
+    node->data.function.opList = opList;
+    if(opList != NULL){
+        opList->parent = node;
     }
     node->data.function.oper = resolveFunc(funcName);
     if(node->data.function.oper == CUSTOM_OPER){
@@ -150,8 +147,7 @@ void freeNode(AST_NODE *node)
     if (node->type == FUNC_NODE_TYPE)
     {
         // Recursive calls to free child nodes
-        freeNode(node->data.function.op1);
-        freeNode(node->data.function.op2);
+        freeNode(node->data.function.opList);
 
         // Free up identifier string if necessary
         if (node->data.function.oper == CUSTOM_OPER)
@@ -268,99 +264,136 @@ RET_VAL evalFuncNode(AST_NODE *node)
     RET_VAL result = {INT_TYPE, NAN};
     RET_VAL temp1 = {INT_TYPE, NAN};
     RET_VAL temp2 = {INT_TYPE, NAN};
+    AST_NODE *tempNode;
 
 
     switch(node->data.function.oper){
         case NEG_OPER:
-            result.value = -eval(node->data.function.op1).value;
+            result.value = -eval(node->data.function.opList).value;
             setNumType(result);
             break;
         case ABS_OPER:
-            result.value = fabs(eval(node->data.function.op1).value);
+            result.value = fabs(eval(node->data.function.opList).value);
             setNumType(result);
             break;
         case SQRT_OPER:
-            result.value = sqrt(eval(node->data.function.op1).value);
+            result.value = sqrt(eval(node->data.function.opList).value);
             result.type = DOUBLE_TYPE;
             break;
         case EXP_OPER:
-            result.value = exp(eval(node->data.function.op1).value);
+            result.value = exp(eval(node->data.function.opList).value);
             result.type = DOUBLE_TYPE;
             break;
         case ADD_OPER:
-            temp1 = eval(node->data.function.op1);
-            temp2 = eval(node->data.function.op2);
-
-            if(temp1.type == DOUBLE_TYPE || temp2.type == DOUBLE_TYPE){
-                result.type = DOUBLE_TYPE;
-            }
-            result.value = temp1.value + temp2.value;
+            if(node->data.function.opList->next !=NULL) {
+                result = eval(node->data.function.opList);
+                tempNode = node->data.function.opList;
+                while (tempNode->next != NULL) {
+                    tempNode = tempNode->next;
+                    temp1 = eval(tempNode);
+                    result.value = result.value + temp1.value;
+                    if (temp1.type == DOUBLE_TYPE) {
+                        result.type = DOUBLE_TYPE;
+                    }
+                }
+            }else{ error("Too few parameters for function type addition");}
             break;
         case SUB_OPER:
-            temp1 = eval(node->data.function.op1);
-            temp2 = eval(node->data.function.op2);
-
-            if(temp1.type == DOUBLE_TYPE || temp2.type == DOUBLE_TYPE){
-                result.type = DOUBLE_TYPE;
-            }
-            result.value = temp1.value - temp2.value;
+            if(node->data.function.opList->next !=NULL) {
+                result = eval(node->data.function.opList);
+                tempNode = node->data.function.opList;
+                while(tempNode->next != NULL){
+                    tempNode = tempNode->next;
+                    temp1 = eval(tempNode);
+                    result.value = result.value - temp1.value;
+                    if(temp1.type == DOUBLE_TYPE){
+                        result.type = DOUBLE_TYPE;
+                    }
+                }
+            }else{error("Too few parameters for function type subtraction");}
             break;
         case MAX_OPER:
-            result.value = fmax(eval(node->data.function.op1).value,eval(node->data.function.op2).value);
-            setNumType(result);
-            break;
+            if(node->data.function.opList->next !=NULL) {
+                result.value = fmax(eval(node->data.function.opList).value,eval(node->data.function.opList->next).value);
+                setNumType(result);
+            }else{error("Too few parameters for function type max");}
+
+    break;
         case MIN_OPER:
-            result.value = fmin(eval(node->data.function.op1).value,eval(node->data.function.op2).value);
-            setNumType(result);
+            if(node->data.function.opList->next !=NULL) {
+                result.value = fmin(eval(node->data.function.opList).value,eval(node->data.function.opList->next).value);
+                setNumType(result);
+            }else{error("Too few parameters for function type min");}
             break;
         case MULT_OPER:
-            temp1 = eval(node->data.function.op1);
-            temp2 = eval(node->data.function.op2);
-
-            if(temp1.type == DOUBLE_TYPE || temp2.type == DOUBLE_TYPE){
-                result.type = DOUBLE_TYPE;
-            }
-            result.value = temp1.value * temp2.value;
+            if(node->data.function.opList->next !=NULL) {
+                result = eval(node->data.function.opList);
+                tempNode = node->data.function.opList;
+                while(tempNode->next != NULL){
+                    tempNode = tempNode->next;
+                    temp1 = eval(tempNode);
+                    result.value = result.value * temp1.value;
+                    if(temp1.type == DOUBLE_TYPE){
+                        result.type = DOUBLE_TYPE;
+                    }
+                }
+            }else{error("Too few parameters for function type min");}
             break;
         case REMAINDER_OPER:
-            result.value = fmod(eval(node->data.function.op1).value,eval(node->data.function.op2).value);
-            result.type = DOUBLE_TYPE;
+            if(node->data.function.opList->next !=NULL){
+                result.value = fmod(eval(node->data.function.opList).value,eval(node->data.function.opList->next).value);
+                result.type = DOUBLE_TYPE;
+            }else{
+                error("Too few parameters for function type remainder");
+            }
             break;
         case DIV_OPER:
-            temp1 = eval(node->data.function.op1);
-            temp2 = eval(node->data.function.op2);
+            if(node->data.function.opList->next !=NULL){
+                temp1 = eval(node->data.function.opList);
+                temp2 = eval(node->data.function.opList->next);
+                if(temp1.type == DOUBLE_TYPE || temp2.type == DOUBLE_TYPE){
+                    result.type = DOUBLE_TYPE;
+                }
+                result.value = temp1.value / temp2.value;
+            }else{error("Too few parameters for function type division");}
 
-            if(temp1.type == DOUBLE_TYPE || temp2.type == DOUBLE_TYPE){
-                result.type = DOUBLE_TYPE;
-            }
-            result.value = temp1.value / temp2.value;
             break;
         case LOG_OPER:
-            result.value = log(eval(node->data.function.op1).value);
+            result.value = log(eval(node->data.function.opList).value);
             result.type = DOUBLE_TYPE;
             break;
         case POW_OPER:
-            result.value = pow(eval(node->data.function.op1).value,eval(node->data.function.op2).value);
-            setNumType(result);
+            if(node->data.function.opList->next !=NULL){
+                result.value = pow(eval(node->data.function.opList).value,eval(node->data.function.opList->next).value);
+                setNumType(result);
+            }else{error("Too few parameters for function type pow");}
             break;
         case EXP2_OPER:
-            result.value = exp2(eval(node->data.function.op1).value);
+            result.value = exp2(eval(node->data.function.opList).value);
             setNumType(result);
             break;
         case CBRT_OPER:
-            result.value = cbrt(eval(node->data.function.op1).value);
+            result.value = cbrt(eval(node->data.function.opList).value);
             result.type = DOUBLE_TYPE;
             break;
         case HYPOT_OPER:
-            result.value = hypot(eval(node->data.function.op1).value,eval(node->data.function.op2).value);
-            setNumType(result);
+            if(node->data.function.opList->next !=NULL){
+                result.value = hypot(eval(node->data.function.opList).value,eval(node->data.function.opList->next).value);
+                setNumType(result);
+            }else{error("Too few parameters for function type pow");}
             break;
         case READ_OPER:
             break;
         case RAND_OPER:
             break;
         case PRINT_OPER:
-            result = eval(node->data.function.op1);
+            printFunc(eval(node->data.function.opList));
+            tempNode = node->data.function.opList;
+            while(tempNode->next != NULL){
+                printFunc(eval(tempNode->next));
+                tempNode = tempNode->next;
+            }
+            result = eval(tempNode);
             break;
         case EQUAL_OPER:
             break;
@@ -442,8 +475,24 @@ AST_NODE* setSymbolTable(SYMBOL_TABLE_NODE *table, AST_NODE *node){
 void printRetVal(RET_VAL val)
 {
     if(val.type == DOUBLE_TYPE)
-        printf("Type: %s Value: %.2f", numNames[val.type], val.value);
+        printf("\nType: %s Value: %.2f\n", numNames[val.type], val.value);
     else
-        printf("Type: %s Value: %d", numNames[val.type], (int) val.value);
+        printf("\nType: %s Value: %d\n", numNames[val.type], (int) val.value);
     // TODO done print the type and value of the value passed in.
+}
+
+void printFunc(RET_VAL val)
+{
+    if(val.type == DOUBLE_TYPE)
+        printf("%s Value: %.2f  ", numNames[val.type], val.value);
+    else
+        printf("%s Value: %d    ", numNames[val.type], (int) val.value);
+    // TODO done print the type and value of the value passed in.
+}
+
+AST_NODE* setNextValue(AST_NODE *curr, AST_NODE *next){
+    curr->next = next;
+    next->parent = curr;
+
+    return curr;
 }

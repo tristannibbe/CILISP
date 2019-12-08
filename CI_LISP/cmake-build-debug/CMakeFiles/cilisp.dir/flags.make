@@ -6,5 +6,5 @@ C_FLAGS = -m64 -g -O0 -D_DEBUG -Wall -g -isysroot /Library/Developer/CommandLine
 
 C_DEFINES = 
 
-C_INCLUDES = -I/Users/tristan.nibbe114/Desktop/CI_LISP/src -I/Users/tristan.nibbe114/Desktop/CI_LISP/cmake-build-debug 
+C_INCLUDES = -I/Users/tristan.nibbe114/Desktop/CILISP-master/CI_LISP/src -I/Users/tristan.nibbe114/Desktop/CILISP-master/CI_LISP/cmake-build-debug 
 
